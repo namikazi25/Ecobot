@@ -1,4 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, Form
+from typing import List
 from agents.planner import PlanningAgent
 from agents.evaluator import EvaluatingAgent
 from agents.executor import ExecutingAgent
@@ -17,46 +18,38 @@ chat_history = []  # Persistent Chat History
 @app.post("/query/")
 async def process_query(
     query: str = Form(...),
-    pdf_context: str = Form(None),           # <--- NEW PARAM
-    file: UploadFile = File(None)
+    pdf_context: str = Form(None),
+    files: List[UploadFile] = File(None)
 ):
-    """Handles user input and maintains chat history."""
-    
-    global chat_history  # Ensure history is shared across requests
-    
-    file_content = None
-    file_type = None
+    global chat_history
+    file_contents = []  # We'll gather (bytes, content_type) for each file
 
-    if file:
-        file_content = await file.read()
-        file_type = file.content_type
+    # Convert each UploadFile into bytes for the pipeline
+    if files:
+        for f in files:
+            content = await f.read()
+            file_contents.append((content, f.content_type))
     
     # Use PDF context if available
-    if pdf_context and not file:
+    if pdf_context and not files:
         query = f"{query}\nPDF Context: {pdf_context}"
 
     attempt = 0
     while attempt < MAX_RETRIES:
-        # **Step 1: Plan**
-        plan = planner.plan(query, file_content, file_type, chat_history)
-
-        # **Step 2: Evaluate**
+        plan = planner.plan(query, file_contents, chat_history)
         evaluation = evaluator.evaluate(plan, chat_history)
 
         if "error" not in evaluation:
-            # **Step 3: Execute**
             result = executor.execute(evaluation, chat_history)
-            if file and "pdf" in file_type:
+            if files and any("pdf" in f.content_type for f in files):
+                # If there's at least one PDF, set pdf_context
                 result["pdf_context"] = evaluation.get("extracted_text", "")
-            # Validate response structure
             if not result.get("response"):
                 result["response"] = "⚠️ No response generated"
             if "sources" not in result:
                 result["sources"] = []
-            chat_history.append({"role": "assistant", "content": result["response"]})  # Store response
-            return result  # Successfully executed
-
-        # **If evaluation fails, retry planning**
+            chat_history.append({"role": "assistant", "content": result["response"]})
+            return result
         attempt += 1
 
     return {"error": "Failed to generate a valid plan after multiple attempts."}

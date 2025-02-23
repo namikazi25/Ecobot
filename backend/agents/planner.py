@@ -24,21 +24,32 @@ class PlanningAgent:
         "entire entry", "full text"
     ]
 
-    def plan(self, query, file_content=None, file_type=None, history=None):
-        """Generate execution plan considering multiple data sources"""
+    def plan(self, query, file_contents=None, history=None):
+        """
+        Generate execution plan considering multiple data sources.
+        
+        :param query: The text query from the user.
+        :param file_contents: A list of tuples [(bytes, content_type), ...].
+                              Could be empty, one file, or multiple files.
+        :param history: Chat history, if needed for context.
+        """
         history = history or []
-        plan = {"tool": "gpt", "data": query}  # Default plan
+        file_contents = file_contents or []
+
+        # Default plan: use GPT for text
+        plan = {"tool": "gpt", "data": query}
 
         try:
-            # Prioritize file-based operations
-            if file_content:
-                plan = self._handle_file_content(query, file_content, file_type)
-            
-            # Wikipedia detection takes precedence over GPT
+            # 1. If user uploaded at least one file, handle the FIRST recognized file
+            if file_contents:
+                file_bytes, file_type = file_contents[0]  # take the first file
+                plan = self._handle_single_file(query, file_bytes, file_type)
+
+            # 2. Else, check if user query suggests Wikipedia usage
             elif self._requires_wikipedia(query):
                 plan = self._create_wiki_plan(query)
-            
-            # Fallback to GPT with context
+
+            # 3. Otherwise, fallback to GPT with conversation context
             else:
                 plan = self._create_gpt_plan(query, history)
 
@@ -47,24 +58,24 @@ class PlanningAgent:
 
         return plan
 
-    def _handle_file_content(self, query, file_content, file_type):
-        """Process files with validation and error handling"""
+    def _handle_single_file(self, query, file_bytes, file_type):
+        """Process a single file with validation and error handling."""
         if "image" in file_type:
             return {
                 "tool": "image",
-                "data": file_content,
+                "data": file_bytes,  # pass bytes to executor
                 "file_type": file_type,
                 "rationale": "Image file uploaded for analysis"
             }
-            
+
         if "pdf" in file_type:
-            if not isinstance(file_content, bytes):
+            if not isinstance(file_bytes, bytes):
                 raise ValueError("PDF content must be bytes")
-                
-            extracted_text = extract_text_from_pdf(file_content)
+
+            extracted_text = extract_text_from_pdf(file_bytes)
             if "❌" in extracted_text:
                 raise ValueError(extracted_text)
-                
+
             return {
                 "tool": "pdf",
                 "data": {
@@ -73,14 +84,14 @@ class PlanningAgent:
                 },
                 "rationale": "PDF document processing"
             }
-        
-        raise ValueError("Unsupported file type")
+
+        # If the file is neither image nor pdf, raise an error (or handle differently)
+        raise ValueError(f"Unsupported file type: {file_type}")
 
     def _create_wiki_plan(self, query):
         """Create Wikipedia-specific execution plan"""
         clean_query = self._clean_wiki_query(query)
         needs_full = self._needs_full_page(query)
-        
         return {
             "tool": "wiki_full" if needs_full else "wiki",
             "data": clean_query,
@@ -114,10 +125,9 @@ class PlanningAgent:
 
     def _clean_wiki_query(self, query: str) -> str:
         """Normalize Wikipedia search query"""
-        # Remove Wikipedia references and truncate
         clean = re.sub(r'\(?according to wikipedia\)?', '', query, flags=re.IGNORECASE)
         clean = re.sub(r'\bwikipedia\b', '', clean, flags=re.IGNORECASE)
-        return clean.strip()[:150]  # Limit to 150 characters
+        return clean.strip()[:150]  # Limit to 150 chars
 
     def _build_conversation_context(self, history):
         """Build context from last 3 messages"""
