@@ -21,6 +21,9 @@ def process_image_with_gpt4o(file_content: bytes, file_type: str, user_query: st
 
     try:
         # Now we pass user_query in the 'text' portion:
+        print("[DEBUG] user_query:", user_query)
+        print("[DEBUG] image_data_url:", image_data_url[:100], "...")  # Print partial if large
+
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[

@@ -35,7 +35,7 @@ class PlanningAgent:
         """
         history = history or []
         file_contents = file_contents or []
-
+        print("DEBUG] file_contents ->", file_contents )
         # Default plan: use GPT for text
         plan = {"tool": "gpt", "data": query}
 
@@ -44,14 +44,17 @@ class PlanningAgent:
             if file_contents:
                 file_bytes, file_type = file_contents[0]  # take the first file
                 plan = self._handle_single_file(query, file_bytes, file_type)
+                print(" if [DEBUG] plan ->", plan)
 
             # 2. Else, check if user query suggests Wikipedia usage
             elif self._requires_wikipedia(query):
                 plan = self._create_wiki_plan(query)
+                print("elif [DEBUG] plan ->", plan)
 
             # 3. Otherwise, fallback to GPT with conversation context
             else:
                 plan = self._create_gpt_plan(query, history)
+                print("else [DEBUG] plan ->", plan)
 
         except Exception as e:
             plan = self._create_error_plan(f"Planning error: {str(e)}")
@@ -60,7 +63,10 @@ class PlanningAgent:
 
     def _handle_single_file(self, query, file_bytes, file_type):
         """Process a single file with validation and error handling."""
+        print("[DEBUG] Received file_type:", file_type)
+
         if "image" in file_type:
+            print("[DEBUG] Planner: recognized file type as image, returning image plan.")
             return {
                 "tool": "image",
                 "data": {

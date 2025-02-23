@@ -20,10 +20,11 @@ async def process_query(
     query: str = Form(...),
     pdf_context: str = Form(None),
     files: List[UploadFile] = File(None)
+    
 ):
     global chat_history
     file_contents = []  # We'll gather (bytes, content_type) for each file
-
+    print("[DEBUG] Received request. files param = ", files)
     # Convert each UploadFile into bytes for the pipeline
     if files:
         for f in files:

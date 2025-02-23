@@ -12,15 +12,12 @@ def call_backend(text: str, file_paths: list[str]):
     """
     data = {"query": text or "No text"}
     files = {}
-
-    # Attach each file (as bytes) to the POST data
     for i, path in enumerate(file_paths):
-        if os.path.exists(path):
-            mime_type = mimetypes.guess_type(path)[0] or "application/octet-stream"
-            with open(path, "rb") as f:
-                file_bytes = f.read()
-            # Name each file param uniquely if multiple
-            files[f"file_{i}"] = (os.path.basename(path), file_bytes, mime_type)
+        with open(path, "rb") as f:
+            file_bytes = f.read()
+        mime_type = mimetypes.guess_type(path)[0] or "application/octet-stream"
+        # Bracket notation so that the server sees them as files[0], files[1], etc.
+        files[f"files[{i}]"] = (os.path.basename(path), file_bytes, mime_type)
 
     try:
         response = requests.post(API_URL, data=data, files=files)
