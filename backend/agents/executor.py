@@ -26,10 +26,14 @@ class ExecutingAgent:
                 response["response"] = process_with_gpt4o(data)
             
             elif tool == "image":
-                if file_type:
-                    response["response"] = process_image_with_gpt4o(data, file_type)
+                # Now 'data' is a dict containing {"file_bytes": ..., "user_query": ...}
+                file_bytes = data.get("file_bytes")
+                user_query = data.get("user_query", "")  # default to empty if missing
+
+                if file_type and file_bytes:
+                    response["response"] = process_image_with_gpt4o(file_bytes, file_type, user_query)
                 else:
-                    response["response"] = "❌ Missing file type for image processing"
+                    response["response"] = "❌ Missing file or file type for image processing"
             
             elif tool == "pdf":
                 extracted_text = data.get("extracted_text", "")

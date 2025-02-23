@@ -10,21 +10,24 @@ def encode_image(file_content: bytes, file_type: str) -> str:
     except Exception as e:
         return None
 
-def process_image_with_gpt4o(file_content: bytes, file_type: str, query="Identify this species.") -> str:
-    """Sends an image to GPT-4o for species identification."""
-    image_data_url = encode_image(file_content, file_type)
+def process_image_with_gpt4o(file_content: bytes, file_type: str, user_query: str):
+    """
+    Sends an image + the user's actual question to GPT-4o.
+    """
 
+    image_data_url = encode_image(file_content, file_type)
     if not image_data_url:
         return "❌ Error: Image encoding failed."
 
     try:
+        # Now we pass user_query in the 'text' portion:
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": query},
+                        {"type": "text", "text": user_query},
                         {"type": "image_url", "image_url": {"url": image_data_url, "detail": "high"}},
                     ],
                 }

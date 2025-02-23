@@ -63,7 +63,10 @@ class PlanningAgent:
         if "image" in file_type:
             return {
                 "tool": "image",
-                "data": file_bytes,  # pass bytes to executor
+                "data": {
+                    "file_bytes": file_bytes,
+                    "user_query": query,   # Keep the actual user question here
+                },
                 "file_type": file_type,
                 "rationale": "Image file uploaded for analysis"
             }
