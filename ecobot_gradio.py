@@ -11,13 +11,13 @@ def call_backend(text: str, file_paths: list[str]):
     file_paths is a list of local paths on the server side.
     """
     data = {"query": text or "No text"}
-    files = {}
+    files = []
     for i, path in enumerate(file_paths):
         with open(path, "rb") as f:
             file_bytes = f.read()
         mime_type = mimetypes.guess_type(path)[0] or "application/octet-stream"
         # Bracket notation so that the server sees them as files[0], files[1], etc.
-        files[f"files[{i}]"] = (os.path.basename(path), file_bytes, mime_type)
+        files.append(("files", (os.path.basename(path), file_bytes, mime_type)))
 
     try:
         response = requests.post(API_URL, data=data, files=files)

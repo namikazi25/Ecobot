@@ -1,13 +1,26 @@
 import base64
+from PIL import Image
 import io
 from backend.tools.openai_client import client  # Use shared OpenAI client
 
 def encode_image(file_content: bytes, file_type: str) -> str:
-    """Encodes an image to Base64 format for GPT-4o processing."""
+    """Validate image bytes before encoding"""
     try:
+        # Validate JPEG structure
+        img = Image.open(io.BytesIO(file_content))
+        img.verify()  # Check for corruption
+        
+        # JPEG specific validation
+        if file_type == "image/jpeg":
+            if img.format != "JPEG":
+                raise ValueError("File extension ≠ actual format")
+            if img.mode not in ["RGB", "L"]:
+                raise ValueError(f"Invalid JPEG mode: {img.mode}")
+
         base64_encoded = base64.b64encode(file_content).decode("utf-8")
         return f"data:image/{file_type.split('/')[-1]};base64,{base64_encoded}"
     except Exception as e:
+        print(f"❌ Invalid Image: {str(e)}")
         return None
 
 def process_image_with_gpt4o(file_content: bytes, file_type: str, user_query: str):

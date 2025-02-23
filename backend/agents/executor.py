@@ -1,5 +1,7 @@
 import sys
 import os
+from PIL import Image
+import io
 
 # Add the project root to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
@@ -29,6 +31,16 @@ class ExecutingAgent:
                 # Now 'data' is a dict containing {"file_bytes": ..., "user_query": ...}
                 file_bytes = data.get("file_bytes")
                 user_query = data.get("user_query", "")  # default to empty if missing
+
+                try:
+                    # Pre-check before GPT call
+                    img = Image.open(io.BytesIO(file_bytes))
+                    img.verify()
+                except Exception as e:
+                    return {
+                        "response": f"❌ Invalid/Corrupted Image: {str(e)}. Please upload a valid JPEG/PNG.",
+                        "sources": []
+                    }
 
                 if file_type and file_bytes:
                     response["response"] = process_image_with_gpt4o(file_bytes, file_type, user_query)
