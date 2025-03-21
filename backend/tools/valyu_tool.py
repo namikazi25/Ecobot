@@ -15,7 +15,7 @@ class ValyuClient:
                 search_type="all",
                 max_num_results=3,
                 similarity_threshold=0.5,
-                max_price=max_price
+                max_price=1
             )
             return self._format_response(response)
         except Exception as e:
