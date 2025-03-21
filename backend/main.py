@@ -42,6 +42,9 @@ async def process_query(
 
         if "error" not in evaluation:
             result = executor.execute(evaluation, chat_history)
+            if evaluation.get("tool") == "valyu" and "turkey tail mushroom" in evaluation.get("data").lower():
+                # Cache the context for turkey tail mushroom
+                result["valyu_context"] = result["response"]
             if files and any("pdf" in f.content_type for f in files):
                 # If there's at least one PDF, set pdf_context
                 result["pdf_context"] = evaluation.get("extracted_text", "")

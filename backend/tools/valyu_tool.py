@@ -6,7 +6,7 @@ VALYU_API_KEY = os.getenv("VALYU_API_KEY")
 print(VALYU_API_KEY)
 class ValyuClient:
     def __init__(self):
-        self.client = Valyu(api_key="PgKSGjVQ7s17Wpzmh1thV3AniBYaDtae25J5vPcA")
+        self.client = Valyu(api_key=VALYU_API_KEY)
     
     def search_context(self, query: str, max_price: float = 5.0) -> dict:
         try:

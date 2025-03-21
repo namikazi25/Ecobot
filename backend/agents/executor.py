@@ -74,8 +74,9 @@ class ExecutingAgent:
                             f"Relevance: {res.get('relevance_score')}"
                         )
                         sources.append(res.get("url"))
-                    response["response"] = "\n\n".join(formatted_results)
+                    response["response"] = "Using Valyu for context enrichment:\n\n" + "\n\n".join(formatted_results)
                     response["sources"] = sources
+                    response["valyu_used"] = True
             
             else:
                 response["response"] = "❌ Unknown tool selected"
