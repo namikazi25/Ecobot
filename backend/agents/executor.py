@@ -12,20 +12,10 @@ from backend.tools.pdf_tools import process_pdf_with_gpt4o
 from backend.tools.wiki_tool import search_wikipedia, fetch_full_page
 
 class ExecutingAgent:
-    """Executes validated user plans and orchestrates calls to the appropriate ecological tools (image, wiki, pdf, GPT), formatting the output for the user."""
+    """Executes the validated plan and retrieves results."""
 
     def execute(self, plan, history=None):
-        """
-        Executes the validated plan by delegating work to the selected data processing tool (GPT, image, PDF, or Wiki API).
-        Handles validation and error messaging, returning both the response and relevant sources.
-
-        Args:
-            plan (dict): A dictionary specifying the selected tool and its data payload.
-            history (list, optional): Chat history as a list of dicts. Defaults to None.
-
-        Returns:
-            dict: Output with keys 'response' (str) and optional 'sources' (list) or error keys.
-        """
+        """Executes the validated plan based on the tool selection"""
         history = history or []
         response = {"response": "", "sources": []}
 
@@ -68,33 +58,28 @@ class ExecutingAgent:
                     return self.fallback_response(data, result)
                 response["response"] = self.format_wiki_summary(result)
                 response["sources"] = [result["url"]]
-
+            
             elif tool == "wiki_full":
-                page_result = fetch_full_page(data)
-                if "error" in page_result:
-                    return self.fallback_response(data, page_result)
-                response["response"] = page_result.get("extract", "No page extract found.")
-                response["sources"] = [page_result.get("fullurl", "")]
-
+                result = fetch_full_page(data)
+                if "error" in result:
+                    return self.fallback_response(data, result)
+                response["response"] = self.format_full_wiki(result)
+                response["sources"] = [result["url"]]
+            
             else:
-                response["response"] = "❌ Unknown tool in plan."
+                response["response"] = "❌ Unknown tool selected"
 
         except Exception as e:
-            response["response"] = f"❌ Execution error: {str(e)}"
-        return response
+            response["response"] = f"⚠️ Execution Error: {str(e)}"
 
-    def fallback_response(self, query, result):
-        """Return an error message with optional fallback guidance."""
+        # Update chat history
+        history.append({"role": "assistant", "content": response["response"]})
+        
         return {
-            "response": f"Failed retrieving Wikipedia info: {result.get('error', '')}\nTry rephrasing your query or check your internet connection.",
-            "sources": []
+            "response": response["response"],
+            "sources": response.get("sources", []),
+            "history": history
         }
-
-    def format_wiki_summary(self, wiki_result):
-        """Format the brief Wikipedia extract and relevant metadata for presentation."""
-        summary = wiki_result.get("extract", "[No summary available]")
-        url = wiki_result.get("url", "")
-        return f"{summary}\n\n[🔗 Source]({url})" if url else summary
 
     @staticmethod
     def format_wiki_summary(result: dict) -> str:

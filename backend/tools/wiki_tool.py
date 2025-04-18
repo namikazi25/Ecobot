@@ -9,15 +9,7 @@ HEADERS = {
 }
 
 def search_wikipedia(query: str, sentences: int = 3) -> Dict:
-    """Search Wikipedia using a query string and return the best matching result with a content summary.
-
-    Implements exponential backoff and error handling for robustness.
-    Args:
-        query (str): The user search query.
-        sentences (int): Number of summary sentences to request.
-    Returns:
-        dict: Best Wikipedia result content or an error dict if no suitable results found.
-    """
+    """Search Wikipedia with exponential backoff and proper error handling"""
     params = {
         "action": "query",
         "list": "search",
@@ -48,13 +40,7 @@ def search_wikipedia(query: str, sentences: int = 3) -> Dict:
     return {"error": "Unknown error", "status": 500}
 
 def get_page_details(pageid: int, sentences: int) -> Dict:
-    """Get detailed page summary and metadata for a given Wikipedia page id with a given summary length.
-    Args:
-        pageid (int): Wikipedia internal page ID.
-        sentences (int): Number of summary sentences to extract.
-    Returns:
-        dict: Extract, URLs and metadata for the page, or error details.
-    """
+    """Get detailed page information with section awareness"""
     params = {
         "action": "query",
         "pageids": pageid,
@@ -72,46 +58,36 @@ def get_page_details(pageid: int, sentences: int) -> Dict:
         page = data['query']['pages'][str(pageid)]
         
         return {
-            "extract": page.get("extract", "No summary available."),
-            "url": page.get("fullurl", ""),
-            "title": page.get("title", "Unknown Page"),
-            "last_revision": page.get("revisions", [{}])[0].get("timestamp", None)
+            "title": page["title"],
+            "summary": clean_text(page.get("extract", "")),
+            "url": page["fullurl"],
+            "pageid": pageid,
+            "last_updated": page["revisions"][0]["timestamp"],
+            "wordcount": len(page.get("extract", "").split())
         }
     except Exception as e:
-        return {"error": f"Failed to get page details: {str(e)}"}
+        return {"error": str(e), "status": 500}
 
-def fetch_full_page(query: str) -> Dict:
-    """Return the full plain-text Wikipedia article for a given query.
-    Args:
-        query (str): Article title or user query string.
-    Returns:
-        dict: Article full extract, metadata, or user-facing error message if not found.
-    """
+def fetch_full_page(title: str) -> Dict:
+    """Get full page content with table of contents"""
     params = {
-        "action": "query",
-        "prop": "extracts|info",
-        "titles": query,
+        "action": "parse",
+        "page": title,
+        "prop": "text|sections",
         "format": "json",
-        "explaintext": True,
-        "exsectionformat": "plain",
-        "exlimit": 1,
-        "inprop": "url"
+        "disabletoc": 1
     }
+    
     try:
-        response = requests.get(WIKIPEDIA_API, params=params, headers=HEADERS, timeout=15)
-        response.raise_for_status()
+        response = requests.get(WIKIPEDIA_API, params=params, headers=HEADERS)
         data = response.json()
-        pages = data.get('query', {}).get('pages', {})
-        page = next(iter(pages.values())) if pages else None
-        if not page or "missing" in page:
-            return {"error": "No Wikipedia article found for your query."}
         return {
-            "extract": page.get("extract", "No article text found."),
-            "fullurl": page.get("fullurl", ""),
-            "title": page.get("title", "Unknown Page")
+            "content": clean_html(data["parse"]["text"]["*"]),
+            "sections": [s["line"] for s in data["parse"]["sections"]],
+            "url": f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}"
         }
     except Exception as e:
-        return {"error": f"Failed fetching full Wikipedia article: {str(e)}"}
+        return {"error": str(e), "status": 500}
 
 def clean_html(html: str) -> str:
     """Basic HTML cleaning while preserving structure"""

@@ -10,8 +10,8 @@ from backend.tools.image_tools import process_image_with_gpt4o
 from backend.tools.pdf_tools import extract_text_from_pdf
 
 class PlanningAgent:
-    """Generates execution plans using GPT-4o and domain-specific heuristics for ecological queries. Handles both natural language queries, file analysis, and Wikipedia lookups."""
-
+    """Generates execution plans using GPT-4o and domain-specific heuristics"""
+    
     WIKI_TRIGGERS = [
         "wikipedia", "verified source", "scientific name", "taxonomy of",
         "habitat of", "conservation status", "according to", "peer-reviewed",
@@ -27,30 +27,38 @@ class PlanningAgent:
     def plan(self, query, file_contents=None, history=None):
         """
         Generate execution plan considering multiple data sources.
-        If a file is uploaded, determines tool based on file type. If query matches Wikipedia heuristics, sets tool accordingly; otherwise defaults to GPT. Handles errors gracefully.
         
-        Args:
-            query (str): The user query string.
-            file_contents (list, optional): List of (bytes, content_type) tuples representing uploaded files.
-            history (list, optional): Chat history for possible use in tools (unused here).
-
-        Returns:
-            dict: Plan with keys tool, data, rationale, etc.
+        :param query: The text query from the user.
+        :param file_contents: A list of tuples [(bytes, content_type), ...].
+                              Could be empty, one file, or multiple files.
+        :param history: Chat history, if needed for context.
         """
         history = history or []
         file_contents = file_contents or []
+        # print("DEBUG] file_contents ->", file_contents )
+        # Default plan: use GPT for text
         plan = {"tool": "gpt", "data": query}
 
         try:
+            # 1. If user uploaded at least one file, handle the FIRST recognized file
             if file_contents:
-                file_bytes, file_type = file_contents[0]
+                file_bytes, file_type = file_contents[0]  # take the first file
                 plan = self._handle_single_file(query, file_bytes, file_type)
+                # print(" if [DEBUG] plan ->", plan)
+
+            # 2. Else, check if user query suggests Wikipedia usage
             elif self._requires_wikipedia(query):
                 plan = self._create_wiki_plan(query)
+                # print("elif [DEBUG] plan ->", plan)
+
+            # 3. Otherwise, fallback to GPT with conversation context
             else:
                 plan = self._create_gpt_plan(query, history)
+                # print("else [DEBUG] plan ->", plan)
+
         except Exception as e:
             plan = self._create_error_plan(f"Planning error: {str(e)}")
+
         return plan
 
     def _handle_single_file(self, query, file_bytes, file_type):

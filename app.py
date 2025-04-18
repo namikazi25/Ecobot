@@ -1,9 +1,10 @@
 import streamlit as st
 import requests
 import json
+import os
 
-# FastAPI backend URL
-API_URL = "http://127.0.0.1:8000"
+# FastAPI backend URL - Read from environment variable or default
+API_URL = os.getenv("BACKEND_API_URL", "http://127.0.0.1:8000")
 
 st.set_page_config(page_title="🌿 EcoBot", layout="wide")
 st.title("🌿 EcoBot: Your Ecological Assistant")

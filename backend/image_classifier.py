@@ -10,15 +10,7 @@ tokenizer = open_clip.get_tokenizer('hf-hub:BGLab/BioTrove-CLIP')
 model.to(device).eval()
 
 def classify_with_biotrove(image_bytes: bytes):
-    """Classify an image using BioTrove-CLIP for zero-shot ecological species detection.
-
-    Args:
-        image_bytes (bytes): Binary content of the image file.
-    Returns:
-        Model inference result for the most likely species, or error if the inference fails.
-    Raises:
-        Exception: If the image or model inference process fails.
-    """
+    """Run BioTrove-CLIP for zero-shot classification without predefined labels."""
     image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     image = preprocess_val(image).unsqueeze(0).to(device)
 
