@@ -2,49 +2,57 @@ import gradio as gr
 import requests
 import mimetypes
 import os
+import json
 
-API_URL = "http://localhost:8000/query/"  # Your running FastAPI endpoint
+API_URL = "http://localhost:8000/query/"  # FastAPI endpoint
 
 def call_backend(text: str, file_paths: list[str]):
-    """
-    Send 'text' + optional files to the FastAPI backend.
-    file_paths is a list of local paths on the server side.
-    """
     data = {"query": text or "No text"}
     files = []
-    for i, path in enumerate(file_paths):
+    for path in file_paths:
         with open(path, "rb") as f:
             file_bytes = f.read()
         mime_type = mimetypes.guess_type(path)[0] or "application/octet-stream"
-        # Bracket notation so that the server sees them as files[0], files[1], etc.
         files.append(("files", (os.path.basename(path), file_bytes, mime_type)))
 
     try:
-        response = requests.post(API_URL, data=data, files=files)
-        return response.json()
+        resp = requests.post(API_URL, data=data, files=files, timeout=15)
+        # Debug: print status and raw body to console
+        print(f"\U0001F50D Backend returned {resp.status_code}: {resp.text}")
+
+        resp.raise_for_status()
+        payload = resp.json()
+    except requests.HTTPError as http_err:
+        return {"response": f"HTTP error {resp.status_code}: {resp.text}", "sources": []}
+    except ValueError:
+        # JSON decode failed
+        return {"response": f"Invalid JSON from backend: {resp.text}", "sources": []}
     except Exception as e:
-        return {"response": f"Backend Error: {str(e)}", "sources": []}
+        return {"response": f"Backend request failed: {e}", "sources": []}
+
+    return payload
 
 def handle_message(message, history):
-    """
-    - message: {"text": "...", "files": [...list of file paths...]}
-    - history: chat history (list of dicts in OpenAI style)
-    Returns a string (the assistant's new reply).
-    """
     user_text = message.get("text", "")
     file_paths = message.get("files", [])
 
-    # Send everything to your FastAPI backend
     backend_data = call_backend(user_text, file_paths)
-    bot_text = backend_data.get("response", "No response received.")
+
+    # If backend_data has a “detail” key (FastAPI error), expose it
+    if "detail" in backend_data:
+        bot_text = f"Backend error: {backend_data['detail']}"
+    else:
+        bot_text = backend_data.get("response")
+        if bot_text is None:
+            # Show entire payload so you can diagnose missing fields
+            bot_text = f"No 'response' field in backend payload:\n{json.dumps(backend_data, indent=2)}"
+
+    # Append sources if present
     sources = backend_data.get("sources", [])
-
-    # Optionally append sources at the end
     if sources:
-        formatted_sources = "\n".join(f"- {src}" for src in sources)
-        bot_text += f"\n\n**Sources**:\n{formatted_sources}"
+        src_lines = "\n".join(f"- {s}" for s in sources)
+        bot_text += f"\n\n**Sources**:\n{src_lines}"
 
-    # Return the assistant's message as a string
     return bot_text
 
 demo = gr.ChatInterface(
