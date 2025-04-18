@@ -6,8 +6,11 @@ import re
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from backend.gpt_handler import generate_plan_with_gpt4o
-from backend.tools.image_tools import process_image_with_gpt4o
+from backend.tools.image_tools import process_image_with_llm
 from backend.tools.pdf_tools import extract_text_from_pdf
+from core.llm_factory import get_llm
+from core.prompts import PLANNER_PROMPT
+from langchain.chains import LLMChain
 
 class PlanningAgent:
     """Generates execution plans using GPT-4o and domain-specific heuristics"""
@@ -24,6 +27,10 @@ class PlanningAgent:
         "entire entry", "full text"
     ]
 
+    def __init__(self, llm=None):
+        self.llm = llm or get_llm("google", "gemini-2.0-flash")
+        self.chain = LLMChain(llm=self.llm, prompt=PLANNER_PROMPT)
+    
     def plan(self, query, file_contents=None, history=None):
         """
         Generate execution plan considering multiple data sources.
@@ -53,9 +60,10 @@ class PlanningAgent:
 
             # 3. Otherwise, fallback to GPT with conversation context
             else:
-                plan = self._create_gpt_plan(query, history)
-                # print("else [DEBUG] plan ->", plan)
-
+                # Use LangChain LLMChain for planning
+                plan_result = self.chain.invoke({"query": query})
+                plan_str = plan_result["text"] if isinstance(plan_result, dict) and "text" in plan_result else str(plan_result)
+                plan = self._parse_plan(plan_str)
         except Exception as e:
             plan = self._create_error_plan(f"Planning error: {str(e)}")
 

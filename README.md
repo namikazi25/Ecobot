@@ -84,7 +84,12 @@ namikazi25-ecobot/
 
 ### Prerequisites
 - Python 3.9+
-- OpenAI API key
+- OpenAI or Google Gemini API key
+
+### Environment Variables
+- `LLM_PROVIDER`: Set to `openai` or `google` (default: `google`)
+- `LLM_MODEL`: Model name (e.g., `gpt-4o`, `gpt-4o-mini`, `gemini-2.0-flash`)
+- `OPENAI_API_KEY` or `GOOGLE_API_KEY`: Your provider's API key
 
 ### Quick Start
 
@@ -101,7 +106,13 @@ namikazi25-ecobot/
 
 3. **Configure environment**
    ```bash
-   echo "OPENAI_API_KEY=your_key_here" > .env
+   echo "LLM_PROVIDER=google" > .env
+   echo "LLM_MODEL=gemini-2.0-flash" >> .env
+   echo "GOOGLE_API_KEY=your_gemini_key_here" >> .env
+   # Or for OpenAI:
+   # echo "LLM_PROVIDER=openai" >> .env
+   # echo "LLM_MODEL=gpt-4o" >> .env
+   # echo "OPENAI_API_KEY=your_openai_key_here" >> .env
    ```
 
 4. **Launch system**
@@ -112,6 +123,20 @@ namikazi25-ecobot/
    # In new terminal
    streamlit run app.py
    ```
+
+### Model Selection
+- You can select the LLM provider and model at runtime via the UI dropdown or by passing parameters to the `/query/` endpoint.
+- Example API usage:
+  ```bash
+  curl -X POST "http://localhost:8000/query/" \
+    -H "Content-Type: application/json" \
+    -d '{"query": "What is the taxonomy of the honeybee?", "provider": "google", "model": "gemini-2.0-flash"}'
+  ```
+
+### Troubleshooting
+- Ensure your API keys are valid and match the selected provider.
+- If you encounter model errors, verify the `LLM_MODEL` value is supported by your provider.
+- For latency or quota issues, try switching providers or models.
 
 
 

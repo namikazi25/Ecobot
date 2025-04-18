@@ -1,4 +1,7 @@
 from openai import OpenAI
+from core.llm_factory import get_llm
+from core.prompts import PLANNER_PROMPT, EVALUATOR_PROMPT
+from langchain.chains import LLMChain
 import os
 
 # Load API Key
@@ -100,4 +103,17 @@ If the query refers to an **image or a PDF**, defer to the appropriate tool.
         return response.choices[0].message.content  # Extract response
     except Exception as e:
         return f"❌ Error calling GPT-4o: {str(e)}"
+
+
+def generate_plan_with_llm(query, llm=None):
+    llm = llm or get_llm(os.getenv("LLM_PROVIDER", "google"), os.getenv("LLM_MODEL", "gemini-2.0-flash"))
+    chain = LLMChain(llm=llm, prompt=PLANNER_PROMPT)
+    return chain.run(query=query)
+
+def evaluate_plan_with_llm(plan, history=None, llm=None):
+    llm = llm or get_llm(os.getenv("LLM_PROVIDER", "google"), os.getenv("LLM_MODEL", "gemini-2.0-flash"))
+    chain = LLMChain(llm=llm, prompt=EVALUATOR_PROMPT)
+    plan_str = str(plan)
+    history_str = "\n".join([f"{msg['role']}: {msg['content']}" for msg in (history or [])[-3:]])
+    return chain.run(plan=plan_str, history=history_str)
 
