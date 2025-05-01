@@ -4,9 +4,6 @@ import re
 
 # Add the project root to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-
-from backend.gpt_handler import generate_plan_with_gpt4o
-from backend.tools.image_tools import process_image_with_gpt4o
 from backend.tools.pdf_tools import extract_text_from_pdf
 
 class PlanningAgent:

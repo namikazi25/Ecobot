@@ -1,6 +1,8 @@
 import io
 import pdfplumber
-from backend.tools.openai_client import client  # Use shared OpenAI client
+from core.model_router import ModelRouter
+
+router = ModelRouter()
 
 def extract_text_from_pdf(file_content: bytes) -> str:
     """Extracts text from a PDF file."""
@@ -14,27 +16,20 @@ def extract_text_from_pdf(file_content: bytes) -> str:
     except Exception as e:
         return f"❌ Error extracting text from PDF: {str(e)}"
 
-def process_pdf_with_gpt4o(extracted_text: str, query: str) -> str:
-    """Sends extracted PDF text to GPT-4o for processing using the user's query."""
-    if not extracted_text:
-        return "No text extracted from the PDF."
+def process_pdf_with_llm(file_bytes: bytes, user_query: str) -> str:
+    """Sends PDF bytes to Gemini (via router) for processing using the user's query."""
+    if not file_bytes:
+        return "No PDF bytes provided."
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {  # Add system message for context
-                    "role": "system",
-                    "content": """You are EcoBot, an AI-powered ecological assistant. 
-                    Provide scientific and informative responses about biodiversity, 
-                    species identification, and ecosystems using the provided document text."""
-                },
-                {
-                    "role": "user", 
-                    "content": f"{query}\n\nExtracted text:\n{extracted_text}"
-                }
-            ],
-            max_tokens=500,
-        )
-        return response.choices[0].message.content
+        b64 = base64.b64encode(file_bytes).decode("utf-8")
+        file_block = {"type": "file", "source_type": "base64", "mime_type": "application/pdf", "data": b64}
+        llm = router.route()
+        result = llm.invoke([
+            {"role": "user", "content": [
+                {"type": "text", "text": user_query},
+                file_block
+            ]}
+        ])
+        return result.content if hasattr(result, "content") else result
     except Exception as e:
-        return f"❌ Error processing PDF with GPT-4o: {str(e)}"
+        return f"❌ Error processing PDF: {str(e)}"

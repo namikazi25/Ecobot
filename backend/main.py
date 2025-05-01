@@ -1,16 +1,16 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from typing import List
-from agents.planner import PlanningAgent
-from agents.evaluator import EvaluatingAgent
-from agents.executor import ExecutingAgent
+from agents.planner_langchain import PlanningChain
+from agents.evaluator_langchain import EvaluatingChain
+from agents.executor_langchain import ExecutorChain
 import json
 
 app = FastAPI()
 
-# Initialize agents
-planner = PlanningAgent()
-evaluator = EvaluatingAgent()
-executor = ExecutingAgent()
+# Initialize LangChain-based agents
+planner = PlanningChain()
+evaluator = EvaluatingChain()
+executor = ExecutorChain()
 
 MAX_RETRIES = 3
 chat_history = []  # Persistent Chat History
@@ -53,4 +53,4 @@ async def process_query(
             return result
         attempt += 1
 
-    return {"error": "Failed to generate a valid plan after multiple attempts."}
+    return {"response": "⚠️ Failed to generate a valid plan after multiple attempts.", "sources": []}

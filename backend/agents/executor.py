@@ -6,9 +6,9 @@ import io
 # Add the project root to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from backend.tools.image_tools import process_image_with_gpt4o
-from backend.gpt_handler import process_with_gpt4o
-from backend.tools.pdf_tools import process_pdf_with_gpt4o
+from backend.tools.image_tools import process_image_with_llm
+from backend.gpt_handler import process_with_llm
+from backend.tools.pdf_tools import process_pdf_with_llm
 from backend.tools.wiki_tool import search_wikipedia, fetch_full_page
 
 class ExecutingAgent:
@@ -25,7 +25,7 @@ class ExecutingAgent:
             file_type = plan.get("file_type")
 
             if tool == "gpt":
-                response["response"] = process_with_gpt4o(data)
+                response["response"] = process_with_llm(data)
             
             elif tool == "image":
                 # Now 'data' is a dict containing {"file_bytes": ..., "user_query": ...}
@@ -43,14 +43,14 @@ class ExecutingAgent:
                     }
 
                 if file_type and file_bytes:
-                    response["response"] = process_image_with_gpt4o(file_bytes, file_type, user_query)
+                    response["response"] = process_image_with_llm(file_bytes, file_type, user_query)
                 else:
                     response["response"] = "❌ Missing file or file type for image processing"
             
             elif tool == "pdf":
                 extracted_text = data.get("extracted_text", "")
                 user_query = data.get("user_query", "Summarize this document.")
-                response["response"] = process_pdf_with_gpt4o(extracted_text, user_query)
+                response["response"] = process_pdf_with_llm(extracted_text, user_query)
             
             elif tool == "wiki":
                 result = search_wikipedia(data)
@@ -97,7 +97,7 @@ class ExecutingAgent:
     @staticmethod
     def fallback_response(query: str, error: dict) -> dict:
         return {
-            "response": f"❌ Wikipedia Error: {error.get('error', 'Unknown error')}. GPT Response:\n{process_with_gpt4o(query)}",
+            "response": f"❌ Wikipedia Error: {error.get('error', 'Unknown error')}. GPT Response:\n{process_with_llm(query)}",
             "sources": [],
             "history": []
         }
